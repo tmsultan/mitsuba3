@@ -35,7 +35,8 @@ def skip_if_wrong_driver_version(func):
 
     from functools import wraps
 
-    REF_DRIVER_VERSION = '515.65.01'
+    REF_DRIVER_VERSION = '520.61.05'
+    REF_GPU_MODEL = 'NVIDIA Graphics Device'
 
     def run(command):
         p = subprocess.Popen(command,
@@ -76,13 +77,18 @@ def skip_if_wrong_driver_version(func):
         return smi
 
     driver_version = run_and_match(nvidia_smi_path(), r'Driver Version: (.*?) ')
+    gpu_model = run_and_match(
+            ' '.join([nvidia_smi_path(), "--query-gpu=name", "--format=csv,noheader"]),
+            r'(.*)'
+    )
 
     @wraps(func)
     def f(*args, **kwargs):
-        if REF_DRIVER_VERSION != driver_version:
-            pytest.skip(f"Cannot compare with `OptixDenoiser` references "
-                         "images because they were generated with NVidia "
-                         "driver version: {driver_version}.")
+        if REF_DRIVER_VERSION != driver_version or REF_GPU_MODEL != gpu_model:
+            pytest.skip("Cannot compare with `OptixDenoiser` references "
+                        "images because they were generated with NVidia "
+                        f"driver version \"{REF_DRIVER_VERSION}\" on a "
+                        f"\"{REF_GPU_MODEL}\".")
 
         return func(*args, **kwargs)
 
